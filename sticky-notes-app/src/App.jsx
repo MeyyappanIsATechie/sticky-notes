@@ -8,6 +8,11 @@ import { useResize } from "./hooks/useResize";
 import { getNextPosition } from "./utils/layout";
 import { loadState, saveState } from "./utils/storage";
 import {
+  exportNotesAsJSON,
+  exportNotesAsMarkdown,
+  parseImportedNotes,
+} from "./utils/exportImport";
+import {
   NOTE_WIDTH,
   NOTE_HEIGHT,
   NOTE_COLORS,
@@ -64,7 +69,7 @@ export default function App() {
     const scrollLeft = container ? container.scrollLeft : 0;
     const scrollTop = container ? container.scrollTop : 0;
     const pos = getNextPosition(notes, containerWidth, scrollLeft, scrollTop);
-    
+
     const newNote = {
       id: Date.now() + Math.random(),
       content,
@@ -118,6 +123,9 @@ export default function App() {
       setNotes((prev) => prev.filter((n) => n.id !== action.note.id));
     } else if (action.type === "delete") {
       setNotes((prev) => [...prev, action.note]);
+    } else if (action.type === "bulk-create") {
+      const ids = new Set(action.notes.map((n) => n.id));
+      setNotes((prev) => prev.filter((n) => !ids.has(n.id)));
     }
   }, []);
 
@@ -126,11 +134,61 @@ export default function App() {
       setNotes((prev) => [...prev, action.note]);
     } else if (action.type === "delete") {
       setNotes((prev) => prev.filter((n) => n.id !== action.note.id));
+    } else if (action.type === "bulk-create") {
+      setNotes((prev) => [...prev, ...action.notes]);
     }
   }, []);
 
   const handleUndo = () => undo(applyInverse);
   const handleRedo = () => redo(applyForward);
+  const handleExportJSON = () => exportNotesAsJSON(notes);
+  const handleExportMarkdown = () => exportNotesAsMarkdown(notes);
+
+  const handleImportFile = async (file) => {
+    try {
+      const text = await file.text();
+      const incoming = parseImportedNotes(text);
+      if (incoming.length === 0) return;
+
+      const container = containerRef.current;
+      const containerWidth = container ? container.clientWidth : 800;
+      const scrollLeft = container ? container.scrollLeft : 0;
+      const scrollTop = container ? container.scrollTop : 0;
+
+      let workingNotes = notes;
+      let nextColorIndex = colorIndex;
+      const created = [];
+
+      incoming.forEach((n) => {
+        const pos = getNextPosition(
+          workingNotes,
+          containerWidth,
+          scrollLeft,
+          scrollTop,
+        );
+        const note = {
+          id: Date.now() + Math.random(),
+          content: n.content,
+          x: pos.x,
+          y: pos.y,
+          width: n.width || NOTE_WIDTH,
+          height: n.height || NOTE_HEIGHT,
+          pinned: n.pinned,
+          zIndex: 1,
+          color: n.color || NOTE_COLORS[nextColorIndex % NOTE_COLORS.length],
+        };
+        nextColorIndex += 1;
+        created.push(note);
+        workingNotes = [...workingNotes, note];
+      });
+
+      setColorIndex(nextColorIndex);
+      setNotes(workingNotes);
+      pushAction({ type: "bulk-create", notes: created });
+    } catch (err) {
+      alert(err.message || "Import failed.");
+    }
+  };
 
   const bringToFront = useCallback((id) => {
     setNotes((prev) => {
@@ -195,6 +253,9 @@ export default function App() {
         onSearchChange={setSearch}
         darkMode={darkMode}
         onToggleDarkMode={() => setDarkMode((d) => !d)}
+        onExportJSON={handleExportJSON}
+        onExportMarkdown={handleExportMarkdown}
+        onImportFile={handleImportFile}
         borderColor={borderColor}
         panelBg={panelBg}
         textColor={textColor}
