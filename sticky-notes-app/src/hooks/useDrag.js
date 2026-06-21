@@ -2,6 +2,13 @@ import { useRef, useCallback, useEffect } from "react";
 
 export function useDrag({ containerRef, onMove, onDragStart }) {
   const dragInfo = useRef(null);
+  const onMoveRef = useRef(onMove);
+  const onDragStartRef = useRef(onDragStart);
+
+  useEffect(() => {
+    onMoveRef.current = onMove;
+    onDragStartRef.current = onDragStart;
+  });
 
   const handleMove = useCallback(
     (e) => {
@@ -22,9 +29,9 @@ export function useDrag({ containerRef, onMove, onDragStart }) {
         e.clientY - rect.top - info.offsetY + container.scrollTop,
       );
 
-      onMove(info.id, x, y);
+      onMoveRef.current(info.id, x, y);
     },
-    [containerRef, onMove],
+    [containerRef],
   );
 
   const handleEnd = useCallback(() => {
@@ -45,14 +52,14 @@ export function useDrag({ containerRef, onMove, onDragStart }) {
         offsetY: e.clientY - rect.top - noteY + container.scrollTop,
       };
 
-      onDragStart?.(id);
+      onDragStartRef.current?.(id);
 
       document.addEventListener("mousemove", handleMove);
 
       // Automatically removed after first mouseup
       document.addEventListener("mouseup", handleEnd, { once: true });
     },
-    [containerRef, onDragStart, handleMove, handleEnd],
+    [containerRef, handleMove, handleEnd],
   );
 
   useEffect(() => {

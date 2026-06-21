@@ -3,27 +3,29 @@ import { MIN_NOTE_WIDTH, MIN_NOTE_HEIGHT } from "../constants";
 
 export function useResize({ onResize }) {
   const resizeInfo = useRef(null);
+  const onResizeRef = useRef(onResize);
 
-  const handleMove = useCallback(
-    (e) => {
-      const info = resizeInfo.current;
+  useEffect(() => {
+    onResizeRef.current = onResize;
+  });
 
-      if (!info) return;
+  const handleMove = useCallback((e) => {
+    const info = resizeInfo.current;
 
-      const width = Math.max(
-        MIN_NOTE_WIDTH,
-        info.startWidth + (e.clientX - info.startX),
-      );
+    if (!info) return;
 
-      const height = Math.max(
-        MIN_NOTE_HEIGHT,
-        info.startHeight + (e.clientY - info.startY),
-      );
+    const width = Math.max(
+      MIN_NOTE_WIDTH,
+      info.startWidth + (e.clientX - info.startX),
+    );
 
-      onResize(info.id, width, height);
-    },
-    [onResize],
-  );
+    const height = Math.max(
+      MIN_NOTE_HEIGHT,
+      info.startHeight + (e.clientY - info.startY),
+    );
+
+    onResizeRef.current(info.id, width, height);
+  }, []);
 
   const handleEnd = useCallback(() => {
     resizeInfo.current = null;
