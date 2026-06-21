@@ -19,6 +19,7 @@ import {
   DEBOUNCE_DELAY,
   SAVE_DEBOUNCE_DELAY,
 } from "./constants";
+import { useSpeechToText } from "./hooks/useSpeechToText";
 
 function getInitialState() {
   return loadState() || {};
@@ -33,7 +34,9 @@ export default function App() {
   const [colorIndex, setColorIndex] = useState(
     () => getInitialState().colorIndex || 0,
   );
+  const [voiceError, setVoiceError] = useState(null);
 
+  const voiceBaseTextRef = useRef("");
   const containerRef = useRef(null);
   const debouncedInput = useDebounce(input, DEBOUNCE_DELAY);
 
@@ -223,6 +226,35 @@ export default function App() {
     startResize(e, id, note.width, note.height);
   };
 
+  const {
+    isSupported: voiceSupported,
+    isListening: isVoiceListening,
+    startListening: startVoice,
+    stopListening: stopVoice,
+  } = useSpeechToText({
+    onResult: (transcript) => {
+      const base = voiceBaseTextRef.current;
+      setInput(base ? `${base} ${transcript}` : transcript);
+    },
+    onError: (msg) => setVoiceError(msg),
+  });
+
+  const handleToggleVoice = () => {
+    if (isVoiceListening) {
+      stopVoice();
+      return;
+    }
+    setVoiceError(null);
+    voiceBaseTextRef.current = input.trim();
+    startVoice();
+  };
+
+  useEffect(() => {
+    if (!voiceError) return;
+    const timer = setTimeout(() => setVoiceError(null), 5000);
+    return () => clearTimeout(timer);
+  }, [voiceError]);
+
   const filteredNotes = notes.filter((n) =>
     n.content.toLowerCase().includes(search.toLowerCase()),
   );
@@ -256,6 +288,10 @@ export default function App() {
         onExportJSON={handleExportJSON}
         onExportMarkdown={handleExportMarkdown}
         onImportFile={handleImportFile}
+        isVoiceSupported={voiceSupported}
+        isListening={isVoiceListening}
+        onToggleVoice={handleToggleVoice}
+        voiceError={voiceError}
         borderColor={borderColor}
         panelBg={panelBg}
         textColor={textColor}

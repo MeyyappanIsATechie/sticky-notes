@@ -8,6 +8,8 @@ import {
   Sun,
   Download,
   Upload,
+  Mic,
+  MicOff,
 } from "lucide-react";
 
 export default function Toolbar({
@@ -26,6 +28,10 @@ export default function Toolbar({
   onExportJSON,
   onExportMarkdown,
   onImportFile,
+  isVoiceSupported,
+  isListening,
+  onToggleVoice,
+  voiceError,
   borderColor,
   panelBg,
   textColor,
@@ -37,7 +43,7 @@ export default function Toolbar({
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) onImportFile(file);
-    e.target.value = ""; // allow re-importing the same filename later
+    e.target.value = "";
   };
 
   return (
@@ -52,6 +58,23 @@ export default function Toolbar({
         placeholder={isEditing ? "Edit note..." : "Write a note..."}
         className={`flex-1 min-w-[200px] px-3 py-2 rounded-lg border ${borderColor} ${panelBg} ${textColor} focus:outline-none focus:ring-2 focus:ring-blue-400`}
       />
+
+      {isVoiceSupported && (
+        <button
+          onClick={onToggleVoice}
+          className={`p-2 rounded-lg border ${
+            isListening
+              ? "bg-red-500 text-white border-red-500 animate-pulse"
+              : `${borderColor} ${hoverBg}`
+          }`}
+          title={
+            isListening ? "Stop voice input" : "Dictate note (voice input)"
+          }
+        >
+          {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+        </button>
+      )}
+
       <button
         onClick={onSubmit}
         className="flex items-center gap-1 px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
@@ -144,6 +167,10 @@ export default function Toolbar({
       >
         {darkMode ? <Sun size={18} /> : <Moon size={18} />}
       </button>
+
+      {voiceError && (
+        <span className="text-xs text-red-500 basis-full">{voiceError}</span>
+      )}
     </div>
   );
 }
